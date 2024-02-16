@@ -1,5 +1,8 @@
 package main
 
+// statsFunc defines a generic statistical function
+type statsFunc func(data []float64) float64
+
 // sum calculates the sum of all values in the column
 func sum(data []float64) float64 {
 	sum := 0.0
