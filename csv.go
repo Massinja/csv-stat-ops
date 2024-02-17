@@ -21,7 +21,7 @@ func sum(data []float64) float64 {
 	return sum
 }
 
-// avg determines avarage value of the column
+// avg determines average value of the column
 func avg(data []float64) float64 {
 	return sum(data) / float64(len(data))
 }
@@ -53,7 +53,7 @@ func cvs2float(r io.Reader, column int) ([]float64, error) {
 			continue
 		}
 		if column >= len(row) {
-			return nil, fmt.Errorf("%w: File has only %d columns", ErrInvalidColumn, len(row))
+			return nil, fmt.Errorf("%w: file has only %d columns", ErrInvalidColumn, len(row))
 		}
 		v, err := strconv.ParseFloat(row[column], 64)
 		if err != nil {
