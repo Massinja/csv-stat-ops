@@ -1,7 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"errors"
+	"io"
+	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 func TestSum(t *testing.T) {
@@ -49,5 +54,84 @@ func TestOperations(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestCSV2Float(t *testing.T) {
+	csvData := `IP_Address,Requests,Response_Time
+192.168.0.199,2056,236
+192.168.0.88,899,220
+192.168.0.199,3054,226
+192.168.0.100,4133,218
+192.168.0.199,950,238
+`
+
+	testCases := []struct {
+		name   string
+		col    int
+		exp    []float64
+		expErr error
+		r      io.Reader
+	}{
+		{name: "Column2",
+			col:    2,
+			exp:    []float64{2056, 899, 3054, 4133, 950},
+			expErr: nil,
+			r:      strings.NewReader(csvData),
+		},
+		{name: "Column3",
+			col:    3,
+			exp:    []float64{236, 220, 226, 218, 238},
+			expErr: nil,
+			r:      strings.NewReader(csvData),
+		},
+		{name: "FailRead",
+			col:    1,
+			exp:    nil,
+			expErr: iotest.ErrTimeout,
+			r:      iotest.TimeoutReader(bytes.NewReader([]byte{0})),
+		},
+		{name: "FailedNotNumber",
+			col:    1,
+			exp:    nil,
+			expErr: ErrNotNumber,
+			r:      strings.NewReader(csvData),
+		},
+		{name: "FailedInvalidColumn1",
+			col:    4,
+			exp:    nil,
+			expErr: ErrInvalidColumn,
+			r:      strings.NewReader(csvData),
+		},
+		{name: "FailedInvalidColumn2",
+			col:    -3,
+			exp:    nil,
+			expErr: ErrInvalidColumn,
+			r:      strings.NewReader(csvData),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, resErr := cvs2float(tc.r, tc.col)
+			if len(tc.exp) == 0 && len(res) != 0 {
+				t.Errorf("Expected an empty slice; got: %v", res)
+				return
+			} else if len(res) == 0 && len(tc.exp) != 0 {
+				t.Errorf("Received an empty slice; expected: %v", tc.exp)
+				return
+			} else if len(tc.exp) != len(res) {
+				t.Errorf("Slice length is wrong. Expected %d elements; got: %v", len(tc.exp), len(res))
+				return
+			}
+			for i, exp := range tc.exp {
+				if res[i] != exp {
+					t.Errorf("Expected: %v; got: %v", exp, res[i])
+				}
+			}
+			if !errors.Is(resErr, tc.expErr) {
+				t.Errorf("Expected error: %v; got: %v", tc.expErr, resErr)
+			}
+		})
 	}
 }
