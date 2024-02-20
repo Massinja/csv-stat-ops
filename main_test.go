@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"errors"
+	"io"
+	"path/filepath"
 	"testing"
 )
 
@@ -67,5 +69,22 @@ func TestRun(t *testing.T) {
 				t.Errorf("Expected: %v; got: %v", tc.exp, &res)
 			}
 		})
+	}
+}
+
+func BenchmarkRun(b *testing.B) {
+	// create a slice containing the names of all files in the dir benchmark
+	filenames, err := filepath.Glob("./testdata/benchmark/*.csv")
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+
+	// b.N is adjusted by the benchmark() according to the program’s speed to last ~1s
+	// io.Discard implements the io.Writer interface but discards anything written to it
+	for i := 0; i < b.N; i++ {
+		if err := run(filenames, "avg", 2, io.Discard); err != nil {
+			b.Error(err)
+		}
 	}
 }
