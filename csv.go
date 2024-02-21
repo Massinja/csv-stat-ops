@@ -2,11 +2,9 @@ package main
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
 	"strconv"
-	"testing/iotest"
 )
 
 // statsFunc defines a generic statistical function
@@ -37,17 +35,19 @@ func cvs2float(r io.Reader, column int) ([]float64, error) {
 	column--
 
 	cr := csv.NewReader(r)
-	allData, err := cr.ReadAll()
-	if err != nil {
-		if errors.Is(iotest.ErrTimeout, err) {
-			return nil, iotest.ErrTimeout
-		}
-		return nil, fmt.Errorf("Cannot read from a file: %v", err)
-	}
+	// ReuseRecord allows reader to reuse the same slice for each read operation
+	cr.ReuseRecord = true
+
 	var data []float64
 
-	for i, row := range allData {
-
+	for i := 0; ; i++ {
+		row, err := cr.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("cannot read data from a file: %w", err)
+		}
 		// discard  the title line
 		if i == 0 {
 			continue
