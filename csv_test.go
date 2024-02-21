@@ -113,7 +113,7 @@ func TestCSV2Float(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			res, resErr := cvs2float(tc.r, tc.col)
+			res, resErr := csv2float(tc.r, tc.col)
 			if len(tc.exp) == 0 && len(res) != 0 {
 				t.Errorf("Expected an empty slice; got: %v", res)
 				return

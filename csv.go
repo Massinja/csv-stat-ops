@@ -24,9 +24,9 @@ func avg(data []float64) float64 {
 	return sum(data) / float64(len(data))
 }
 
-// cvs2float parses the contents of the csv file into a []float64
+// csv2float parses the contents of the csv file into a []float64
 // parses the contents of the specified column only
-func cvs2float(r io.Reader, column int) ([]float64, error) {
+func csv2float(r io.Reader, column int) ([]float64, error) {
 	if column < 1 {
 		return nil, fmt.Errorf("%w", ErrInvalidColumn)
 	}
