@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 )
 
 func run(filenames []string, op string, col int, stdout io.Writer) error {
@@ -26,26 +27,57 @@ func run(filenames []string, op string, col int, stdout io.Writer) error {
 	}
 
 	consolidate := make([]float64, 0)
-	// Loop through all files adding their data to consolidate
+
+	// Create the channels to receive results or errors of operations
+	resCh := make(chan []float64)
+	errCh := make(chan error)
+
+	// doneCh won't send any data, only a signal indicating the process is done
+	doneCh := make(chan struct{})
+
+	// coordinate goroutines execution
+	wg := sync.WaitGroup{}
+
+	// Loop through all files and create a goroutine to process
 	for _, fname := range filenames {
-		// Open the file for reading
-		f, err := os.Open(fname)
-		if err != nil {
-			return fmt.Errorf("Cannot open file: %w", err)
-		}
-		// Parse the CSV into a slice of float64 numbers
-		data, err := cvs2float(f, col)
-		if err != nil {
-			return err
-		}
-		if err := f.Close(); err != nil {
-			return err
-		}
-		// Append the data to consolidate
-		consolidate = append(consolidate, data...)
+		wg.Add(1)
+		go func(fname string) {
+
+			defer wg.Done()
+
+			// Open the file for reading
+			f, err := os.Open(fname)
+			if err != nil {
+				errCh <- fmt.Errorf("Cannot open file: %w", err)
+				return
+			}
+			// Parse the CSV into a slice of float64 numbers
+			data, err := cvs2float(f, col)
+			if err != nil {
+				errCh <- err
+			}
+			if err := f.Close(); err != nil {
+				errCh <- err
+			}
+			// Append the data to consolidate
+			resCh <- data
+		}(fname)
 	}
-	_, err := fmt.Fprintln(stdout, opFunc(consolidate))
-	return err
+	go func() {
+		wg.Wait()
+		close(doneCh)
+	}()
+	for {
+		select {
+		case err := <-errCh:
+			return err
+		case data := <-resCh:
+			consolidate = append(consolidate, data...)
+		case <-doneCh:
+			_, err := fmt.Fprintln(stdout, opFunc(consolidate))
+			return err
+		}
+	}
 }
 
 func main() {
